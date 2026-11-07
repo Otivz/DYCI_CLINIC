@@ -18,12 +18,12 @@ from matplotlib.ticker import FuncFormatter, MaxNLocator, MultipleLocator
 
 from simulation import clock_text
 
-EMERGENCY = "#c53030"
-GENERAL = "#2b6cb0"
-NURSE = "#2f855a"
-RENEGE = "#b7791f"
-MUTED = "#718096"
-PEAK = "#f6e05e"
+EMERGENCY = "#dc2626"
+GENERAL = "#2563eb"
+NURSE = "#059669"
+RENEGE = "#d97706"
+MUTED = "#64748b"
+PEAK = "#fef08a"
 
 
 # ----------------------------------------------------------------------
@@ -68,8 +68,14 @@ def _placeholder(fig, text="Press ▶ Play or ⚡ Run Instantly to start"):
 
 
 def _finish(fig, ax, title):
-    ax.set_title(title, fontsize=10, loc="left", color="#1a365d")
-    ax.grid(alpha=0.3)
+    fig.patch.set_facecolor("#ffffff")
+    ax.set_facecolor("#ffffff")
+    ax.set_title(title, fontsize=9.5, fontweight="bold", loc="left", color="#1a365d", pad=6)
+    ax.grid(True, linestyle="--", alpha=0.35, color="#cbd5e1")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color("#cbd5e1")
+    ax.spines["bottom"].set_color("#cbd5e1")
     fig.tight_layout()
 
 
