@@ -27,6 +27,13 @@ print(
     "minutes"
 )
 
+for kind, stats in results["by_type"].items():
+    if stats["count"]:
+        print(f"{kind}: {stats['count']} patients, "
+              f"avg wait {stats['avg_wait']:.2f} minutes")
+
+print("Overtime:", round(results["overtime"], 1), "minutes")
+
 print("\nNurse Utilization:")
 
 for nurse, utilization in results["nurse_utilization"].items():
