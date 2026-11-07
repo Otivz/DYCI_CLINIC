@@ -100,6 +100,21 @@ class LiveView(ttk.Frame):
         self.nurse_frame = ttk.LabelFrame(left, text=" Nurses ", padding=6)
         self.nurse_frame.pack(fill=tk.X)
 
+        self.nurse_canvas = tk.Canvas(self.nurse_frame, highlightthickness=0, bd=0, height=76)
+        self.nurse_scroll = ttk.Scrollbar(self.nurse_frame, orient=tk.HORIZONTAL,
+                                          command=self.nurse_canvas.xview)
+        self.nurse_canvas.configure(xscrollcommand=self.nurse_scroll.set)
+        self.nurse_inner = tk.Frame(self.nurse_canvas)
+        self.nurse_window_id = self.nurse_canvas.create_window((0, 0), window=self.nurse_inner, anchor="nw")
+        self.nurse_canvas.pack(fill=tk.X, expand=True)
+
+        self.nurse_inner.bind(
+            "<Configure>",
+            lambda _e: self.nurse_canvas.configure(scrollregion=self.nurse_canvas.bbox("all"))
+        )
+        self.nurse_canvas.bind("<MouseWheel>", self._on_nurse_mousewheel)
+        self.nurse_inner.bind("<MouseWheel>", self._on_nurse_mousewheel)
+
         wait_frame = ttk.LabelFrame(left, text=" Waiting Room ", padding=6)
         wait_frame.pack(fill=tk.BOTH, expand=True, pady=6)
         self.wait_tree = ttk.Treeview(wait_frame, columns=("id", "type", "waited"),
@@ -159,15 +174,21 @@ class LiveView(ttk.Frame):
         self.log_text.tag_config("renege", foreground="#b7791f", font=("Consolas", 9, "bold"))
         self.log_text.tag_config("preempt", foreground="#805ad5", font=("Consolas", 9, "bold"))
 
+    def _on_nurse_mousewheel(self, event):
+        if len(self.nurse_tiles) >= 3:
+            self.nurse_canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
+
     def _build_nurse_tiles(self):
-        for child in self.nurse_frame.winfo_children():
+        for child in self.nurse_inner.winfo_children():
             child.destroy()
         self.nurse_tiles = []
-        per_row = 4
+        n_nurses = len(self.controller.nurses)
+        has_scroll = n_nurses >= 3
+
         for i, nurse in enumerate(self.controller.nurses):
-            tile = tk.Frame(self.nurse_frame, bd=1, relief=tk.SOLID, bg=COLORS["idle"],
+            tile = tk.Frame(self.nurse_inner, bd=1, relief=tk.SOLID, bg=COLORS["idle"],
                             padx=6, pady=4)
-            tile.grid(row=i // per_row, column=i % per_row, padx=3, pady=3, sticky="nsew")
+            tile.grid(row=0, column=i, padx=3, pady=3, sticky="nsew")
             name = tk.Label(tile, text=nurse.name, font=("Segoe UI", 10, "bold"),
                             bg=COLORS["idle"])
             name.pack(anchor=tk.W)
@@ -177,7 +198,29 @@ class LiveView(ttk.Frame):
                             font=("Segoe UI", 8), fg="#4a5568")
             util.pack(anchor=tk.W)
             self.nurse_tiles.append((tile, name, status, util))
-            self.nurse_frame.columnconfigure(i % per_row, weight=1)
+
+            for widget in (tile, name, status, util):
+                widget.bind("<MouseWheel>", self._on_nurse_mousewheel)
+
+            if has_scroll:
+                self.nurse_inner.columnconfigure(i, minsize=156, weight=0)
+            else:
+                self.nurse_inner.columnconfigure(i, weight=1)
+
+        if has_scroll:
+            self.nurse_scroll.pack(fill=tk.X, pady=(2, 0))
+        else:
+            self.nurse_scroll.pack_forget()
+
+        self.nurse_inner.update_idletasks()
+        h = max(76, self.nurse_inner.winfo_reqheight())
+        self.nurse_canvas.configure(height=h, scrollregion=self.nurse_canvas.bbox("all"))
+        canvas_w = max(self.nurse_canvas.winfo_width(), 1)
+        if not has_scroll:
+            self.nurse_canvas.itemconfigure(self.nurse_window_id, width=canvas_w)
+        else:
+            req_w = self.nurse_inner.winfo_reqwidth()
+            self.nurse_canvas.itemconfigure(self.nurse_window_id, width=max(req_w, canvas_w))
 
     def _update_speed_label(self):
         self.speed_label.config(text=f"{self.speed_var.get():.0f} sim-min / sec")
