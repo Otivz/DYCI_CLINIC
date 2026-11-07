@@ -59,7 +59,7 @@ class CompareView(ttk.Frame):
         self.reps_spin = ttk.Spinbox(bar, from_=2, to=500, textvariable=self.reps_var, width=5)
         self.reps_spin.pack(side=tk.LEFT)
 
-        ttk.Button(bar, text="▶ Run Comparison", command=self.run).pack(side=tk.LEFT, padx=(12, 4))
+        ttk.Button(bar, text="▶ Run Comparison", command=self.run, style="Primary.TButton").pack(side=tk.LEFT, padx=(12, 4))
         ttk.Button(bar, text="Export CSV", command=self.export_csv).pack(side=tk.LEFT)
 
         self.status_label = ttk.Label(
