@@ -12,6 +12,72 @@ POLICIES = ("priority", "fifo", "preemptive")
 # Replace with observed DYCI clinic visit counts per hour.
 DEFAULT_PEAK_PROFILE = (0.6, 1.0, 1.5, 1.8, 1.0, 0.8, 1.2, 0.6)
 
+# Preset profiles for DYCI clinic branches
+CLINIC_PRESETS = {
+    "Clinic Elida": {
+        "description": "Elida Campus Clinic - Moderate general student flow.",
+        "duration": 8.0,
+        "nurses": 2,
+        "arrival_rate": 10.0,
+        "emergency_probability": 0.15,
+        "general_mean": 10.0,
+        "general_sd": 3.0,
+        "emergency_mean": 14.0,
+        "emergency_sd": 4.0,
+        "emergency_target": 5.0,
+        "use_peak_hours": True,
+        "peak_profile": (0.5, 1.2, 1.6, 1.4, 0.9, 0.7, 1.1, 0.6),
+    },
+    "Clinic Marciano": {
+        "description": "Marciano Campus Clinic - Higher volume and acute cases.",
+        "duration": 8.0,
+        "nurses": 3,
+        "arrival_rate": 15.0,
+        "emergency_probability": 0.25,
+        "general_mean": 12.0,
+        "general_sd": 4.0,
+        "emergency_mean": 16.0,
+        "emergency_sd": 5.0,
+        "emergency_target": 5.0,
+        "use_peak_hours": True,
+        "peak_profile": (0.8, 1.5, 1.9, 1.6, 1.0, 0.8, 1.3, 0.7),
+    },
+    "Custom / Default DYCI": {
+        "description": "Baseline DYCI configuration with standard parameters.",
+        "duration": 8.0,
+        "nurses": 2,
+        "arrival_rate": 12.0,
+        "emergency_probability": 0.20,
+        "general_mean": 10.0,
+        "general_sd": 3.0,
+        "emergency_mean": 15.0,
+        "emergency_sd": 5.0,
+        "emergency_target": 5.0,
+        "use_peak_hours": False,
+        "peak_profile": DEFAULT_PEAK_PROFILE,
+    },
+}
+
+
+def get_clinic_config(clinic_name, policy="priority", random_seed=42):
+    """Return a SimulationConfig initialized with the parameters of a named clinic preset."""
+    preset = CLINIC_PRESETS.get(clinic_name, CLINIC_PRESETS["Custom / Default DYCI"])
+    return SimulationConfig(
+        duration=preset["duration"] * 60,
+        nurses=preset["nurses"],
+        arrival_rate=preset["arrival_rate"],
+        emergency_probability=preset["emergency_probability"],
+        general_mean=preset["general_mean"],
+        general_sd=preset["general_sd"],
+        emergency_mean=preset["emergency_mean"],
+        emergency_sd=preset["emergency_sd"],
+        emergency_target=preset["emergency_target"],
+        use_peak_hours=preset["use_peak_hours"],
+        peak_profile=preset["peak_profile"],
+        policy=policy,
+        random_seed=random_seed,
+    )
+
 
 @dataclass
 class SimulationConfig:
