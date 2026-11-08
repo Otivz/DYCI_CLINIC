@@ -70,12 +70,24 @@ def _placeholder(fig, text="Press ▶ Play or ⚡ Run Instantly to start"):
 def _finish(fig, ax, title):
     fig.patch.set_facecolor("#ffffff")
     ax.set_facecolor("#ffffff")
-    ax.set_title(title, fontsize=9.5, fontweight="bold", loc="left", color="#1a365d", pad=6)
-    ax.grid(True, linestyle="--", alpha=0.35, color="#cbd5e1")
+    ax.set_title(title, fontsize=9.5, fontweight="bold", loc="left", color="#1a365d", pad=7)
+    ax.grid(True, linestyle="--", alpha=0.4, color="#e2e8f0")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_color("#cbd5e1")
+    ax.spines["left"].set_linewidth(1)
     ax.spines["bottom"].set_color("#cbd5e1")
+    ax.spines["bottom"].set_linewidth(1)
+    ax.tick_params(colors="#475569", labelsize=8)
+    if ax.xaxis.label:
+        ax.xaxis.label.set_color("#475569")
+    if ax.yaxis.label:
+        ax.yaxis.label.set_color("#475569")
+    leg = ax.get_legend()
+    if leg:
+        leg.get_frame().set_facecolor("#ffffff")
+        leg.get_frame().set_edgecolor("#e2e8f0")
+        leg.get_frame().set_boxstyle("round,pad=0.3")
     fig.tight_layout()
 
 
@@ -97,19 +109,19 @@ def draw_waiting_room(fig, controller):
     t.append(now); total.append(total[-1]); busy.append(busy[-1]); emerg.append(emerg[-1])
 
     _clinic_markers(ax, cfg, now)
-    ax.fill_between(t, 0, emerg, step="post", color=EMERGENCY, alpha=0.75,
-                    label="Emergency waiting")
-    ax.fill_between(t, emerg, total, step="post", color=GENERAL, alpha=0.45,
-                    label="General waiting")
-    ax.step(t, busy, where="post", color=NURSE, linewidth=1.6, label="Nurses busy")
-    ax.axhline(cfg.nurses, color=NURSE, linestyle=":", linewidth=1,
+    ax.fill_between(t, 0, emerg, step="post", color="#dc2626", alpha=0.8,
+                    edgecolor="#b91c1c", linewidth=0.5, label="Emergency waiting")
+    ax.fill_between(t, emerg, total, step="post", color="#2563eb", alpha=0.5,
+                    edgecolor="#1d4ed8", linewidth=0.5, label="General waiting")
+    ax.step(t, busy, where="post", color="#059669", linewidth=2.0, label="Nurses busy")
+    ax.axhline(cfg.nurses, color="#059669", linestyle=":", linewidth=1.2,
                label=f"Nurses on duty ({cfg.nurses})")
 
     _clock_axis(ax, cfg, now)
     ax.set_ylim(bottom=0)
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-    ax.set_ylabel("Patients", fontsize=8)
-    ax.legend(loc="upper left", fontsize=7, ncol=3)
+    ax.set_ylabel("Patients in Clinic", fontsize=8)
+    ax.legend(loc="upper left", fontsize=7.5, ncol=3)
     _finish(fig, ax, f"Waiting room through the day  (now {clock_text(now, cfg.shift_start_hour)})")
 
 
@@ -134,20 +146,21 @@ def draw_hourly_flow(fig, controller):
             left[min(int(p.leave_time // 60), hours - 1)] += 1
 
     xs = list(range(hours))
-    ax.bar(xs, emerg, color=EMERGENCY, alpha=0.85, label="Emergency arrivals")
-    ax.bar(xs, general, bottom=emerg, color=GENERAL, alpha=0.6, label="General arrivals")
-    ax.plot(xs, treated, color=NURSE, marker="o", linewidth=1.6, label="Treated")
+    ax.bar(xs, emerg, color="#dc2626", alpha=0.85, width=0.6, label="Emergency arrivals")
+    ax.bar(xs, general, bottom=emerg, color="#2563eb", alpha=0.6, width=0.6, label="General arrivals")
+    ax.plot(xs, treated, color="#059669", marker="o", markersize=5, markeredgecolor="#ffffff",
+            markeredgewidth=1.2, linewidth=2.0, label="Treated")
     if cfg.reneging:
-        ax.plot(xs, left, color=RENEGE, marker="x", linestyle="--", label="Left untreated")
+        ax.plot(xs, left, color="#d97706", marker="x", markersize=5, linestyle="--",
+                linewidth=1.5, label="Left untreated")
 
     closing = cfg.duration / 60 - 0.5
-    ax.axvline(closing, color=MUTED, linestyle="--", linewidth=1, label="Clinic closes")
+    ax.axvline(closing, color="#64748b", linestyle="--", linewidth=1.2, label="Clinic closes")
     ax.set_xticks(xs)
     ax.set_xticklabels([_hour_label(h * 60, cfg.shift_start_hour) for h in xs], fontsize=8)
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-    ax.tick_params(labelsize=8)
     ax.set_ylabel("Patients per hour", fontsize=8)
-    ax.legend(loc="upper right", fontsize=7)
+    ax.legend(loc="upper right", fontsize=7.5)
     _finish(fig, ax, "Patient flow per clinic hour")
 
 
@@ -169,21 +182,26 @@ def draw_wait_times(fig, controller):
     if not groups:
         return _placeholder(fig, "No patients treated yet")
 
-    box = ax.boxplot(groups, vert=False, patch_artist=True, widths=0.5,
-                     showmeans=True, meanprops={"marker": "D", "markerfacecolor": "white",
-                                                "markeredgecolor": "black", "markersize": 5})
+    box = ax.boxplot(groups, vert=False, patch_artist=True, widths=0.48,
+                     showmeans=True,
+                     meanprops={"marker": "D", "markerfacecolor": "#ffffff",
+                                "markeredgecolor": "#0f172a", "markersize": 6, "markeredgewidth": 1.2},
+                     medianprops={"color": "#0f172a", "linewidth": 2.0},
+                     whiskerprops={"color": "#64748b", "linewidth": 1.2},
+                     capprops={"color": "#64748b", "linewidth": 1.2})
     for patch, color in zip(box["boxes"], colors):
         patch.set_facecolor(color)
-        patch.set_alpha(0.55)
+        patch.set_alpha(0.65)
+        patch.set_edgecolor(color)
+        patch.set_linewidth(1.2)
     ax.set_yticks(range(1, len(labels) + 1))
     ax.set_yticklabels(labels, fontsize=8)
-    ax.axvline(cfg.emergency_target, color=EMERGENCY, linestyle="--", linewidth=1.2,
+    ax.axvline(cfg.emergency_target, color="#dc2626", linestyle="--", linewidth=1.5,
                label=f"Emergency target ({cfg.emergency_target:g} min)")
     ax.set_xlabel("Waiting time before treatment (minutes)", fontsize=8)
     ax.set_xlim(left=0)
-    ax.tick_params(labelsize=8)
-    ax.legend(loc="lower right", fontsize=7)
-    _finish(fig, ax, "How long patients waited  (box = middle 50%, ◇ = average)")
+    ax.legend(loc="lower right", fontsize=7.5)
+    _finish(fig, ax, "Patient waiting time distribution (box = IQR, ◇ = mean, line = median)")
 
 
 def draw_nurse_schedule(fig, controller):
@@ -221,13 +239,11 @@ def draw_nurse_schedule(fig, controller):
 
     util = {n["name"]: n["utilization"] for n in controller.snapshot()["nurses"]}
     ax.set_yticks(range(len(names)))
-    ax.set_yticklabels([f"{name}\n{util[name]:.0f}% busy" for name in names], fontsize=8)
+    ax.set_yticklabels([f"{name}\n({util[name]:.0f}% util)" for name in names], fontsize=8)
     ax.set_ylim(len(names) - 0.5, -0.5)
     _clock_axis(ax, cfg, now)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), fontsize=7, ncol=6, frameon=False)
-    ax.set_title("Nurse schedule  (white gaps = idle)", fontsize=10, loc="left", color="#1a365d")
-    ax.grid(axis="x", alpha=0.3)
-    fig.tight_layout()
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), fontsize=7.5, ncol=6, frameon=True)
+    _finish(fig, ax, "Nurse workstation schedule (white = idle)")
 
 
 LIVE_CHARTS = (
