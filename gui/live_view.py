@@ -76,40 +76,109 @@ class LiveView(ttk.Frame):
     # UI Layout Construction
     # ------------------------------------------------------------------
     def _build_controls(self):
-        bar = ttk.Frame(self)
+        bar = tk.Frame(
+            self, bg="#ffffff", bd=1, relief=tk.SOLID,
+            highlightbackground="#cbd5e1", highlightthickness=1, padx=8, pady=5
+        )
         bar.pack(fill=tk.X, pady=(0, 6))
 
-        self.btn_play = ttk.Button(bar, text="▶ Play", command=self.play, width=9, style="Primary.TButton")
-        self.btn_play.pack(side=tk.LEFT)
-        ttk.Button(bar, text="⏸ Pause", command=self.pause, width=9).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text=f"⏭ Step +{STEP_BUTTON_MIN}m", command=self.step_once).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="⟲ Reset", command=self.reset, width=9).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="⚡ Run Instantly", command=self.run_instant).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Export CSV", command=self.export_csv).pack(side=tk.LEFT, padx=3)
+        # 1. Action Controls (Left)
+        actions_box = tk.Frame(bar, bg="#ffffff")
+        actions_box.pack(side=tk.LEFT)
 
-        ttk.Label(bar, text="Speed:", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, padx=(14, 4))
+        self.btn_play = tk.Button(
+            actions_box, text="▶  Play", font=("Segoe UI", 9, "bold"),
+            bg="#2563eb", fg="#ffffff", activebackground="#1d4ed8", activeforeground="#ffffff",
+            relief=tk.FLAT, bd=0, padx=12, pady=3, cursor="hand2", command=self.play
+        )
+        self.btn_play.pack(side=tk.LEFT, padx=(0, 4))
+        self.btn_play.bind("<Enter>", lambda _e: self.btn_play.config(bg="#1d4ed8"))
+        self.btn_play.bind("<Leave>", lambda _e: self.btn_play.config(bg="#2563eb"))
+
+        def make_btn(parent, text, cmd, fg="#334155", bold=False):
+            b = tk.Button(
+                parent, text=text, font=("Segoe UI", 9, "bold" if bold else "normal"),
+                bg="#f8fafc", fg=fg, activebackground="#e2e8f0", activeforeground="#0f172a",
+                relief=tk.SOLID, bd=1, padx=8, pady=3, cursor="hand2", command=cmd
+            )
+            b.bind("<Enter>", lambda _e, btn=b: btn.config(bg="#e2e8f0"))
+            b.bind("<Leave>", lambda _e, btn=b: btn.config(bg="#f8fafc"))
+            return b
+
+        self.btn_pause = make_btn(actions_box, "⏸  Pause", self.pause)
+        self.btn_pause.pack(side=tk.LEFT, padx=3)
+
+        self.btn_step = make_btn(actions_box, f"⏭  Step +{STEP_BUTTON_MIN}m", self.step_once)
+        self.btn_step.pack(side=tk.LEFT, padx=3)
+
+        self.btn_reset = make_btn(actions_box, "⟲  Reset", self.reset)
+        self.btn_reset.pack(side=tk.LEFT, padx=3)
+
+        self.btn_instant = make_btn(actions_box, "⚡ Run Instantly", self.run_instant, fg="#4338ca", bold=True)
+        self.btn_instant.pack(side=tk.LEFT, padx=3)
+
+        self.btn_export = make_btn(actions_box, "📥 Export CSV", self.export_csv, fg="#047857")
+        self.btn_export.pack(side=tk.LEFT, padx=3)
+
+        # Subtle Vertical Divider
+        tk.Frame(bar, bg="#cbd5e1", width=1, height=22).pack(side=tk.LEFT, padx=10)
+
+        # 2. Simulation Speed & Quick Presets Container
+        speed_box = tk.Frame(bar, bg="#ffffff")
+        speed_box.pack(side=tk.LEFT)
+
+        tk.Label(
+            speed_box, text="⚡ Speed:", font=("Segoe UI", 9, "bold"),
+            bg="#ffffff", fg="#334155"
+        ).pack(side=tk.LEFT, padx=(0, 4))
+
         self.speed_var = tk.DoubleVar(value=10)
-        ttk.Scale(bar, from_=1, to=60, variable=self.speed_var, length=120).pack(side=tk.LEFT)
+        self.speed_scale = ttk.Scale(speed_box, from_=1, to=60, variable=self.speed_var, length=95)
+        self.speed_scale.pack(side=tk.LEFT, padx=(0, 4))
+
+        self.speed_label = tk.Label(
+            speed_box, text="10 min/s", font=("Segoe UI", 8, "bold"),
+            bg="#f1f5f9", fg="#1e293b", padx=6, pady=2, relief=tk.FLAT, width=8
+        )
+        self.speed_label.pack(side=tk.LEFT, padx=(0, 6))
+
+        # Quick Speed Preset Pills
+        self.speed_pills_box = tk.Frame(speed_box, bg="#ffffff")
+        self.speed_pills_box.pack(side=tk.LEFT)
+
+        self.preset_btns = {}
+        for spd_val, label in [(1, "1x"), (5, "5x"), (10, "10x"), (30, "30x"), (60, "Max")]:
+            btn = tk.Button(
+                self.speed_pills_box, text=label, font=("Segoe UI", 8, "bold"),
+                bg="#f1f5f9", fg="#475569", activebackground="#2563eb", activeforeground="#ffffff",
+                relief=tk.SOLID, bd=1, padx=5, pady=1, cursor="hand2",
+                command=lambda v=spd_val: self.speed_var.set(v)
+            )
+            btn.pack(side=tk.LEFT, padx=1)
+            self.preset_btns[spd_val] = btn
+
         self.speed_var.trace_add("write", lambda *_: self._update_speed_label())
-        self.speed_label = ttk.Label(bar, width=15, font=("Segoe UI", 8))
-        self.speed_label.pack(side=tk.LEFT, padx=4)
         self._update_speed_label()
 
-        # Digital Clock & Status Badge (Right)
-        right_box = ttk.Frame(bar)
+        # 3. Digital Clock & Status Badge (Right)
+        right_box = tk.Frame(bar, bg="#ffffff")
         right_box.pack(side=tk.RIGHT)
 
-        clock_box = tk.Frame(right_box, bg="#0f172a", padx=8, pady=2, relief=tk.FLAT)
+        clock_box = tk.Frame(
+            right_box, bg="#0f172a", padx=8, pady=2, relief=tk.SOLID,
+            bd=1, highlightbackground="#1e293b", highlightthickness=1
+        )
         clock_box.pack(side=tk.RIGHT, padx=(6, 0))
         self.clock_label = tk.Label(
-            clock_box, text="08:00 AM", font=("Segoe UI", 11, "bold"),
+            clock_box, text="🕒 08:00 AM", font=("Consolas", 11, "bold"),
             bg="#0f172a", fg="#38bdf8"
         )
         self.clock_label.pack()
 
         self.status_label = tk.Label(
-            right_box, text="Ready", font=("Segoe UI", 8, "bold"),
-            bg="#e2e8f0", fg="#334155", padx=8, pady=3, relief=tk.FLAT
+            right_box, text="● Ready", font=("Segoe UI", 8, "bold"),
+            bg="#f1f5f9", fg="#475569", padx=10, pady=4, relief=tk.SOLID,
+            bd=1, highlightbackground="#cbd5e1", highlightthickness=1
         )
         self.status_label.pack(side=tk.RIGHT)
 
@@ -211,12 +280,14 @@ class LiveView(ttk.Frame):
         wait_frame.pack(fill=tk.BOTH, expand=True, pady=4)
         self.wait_tree = ttk.Treeview(wait_frame, columns=("id", "type", "waited"),
                                       show="headings", height=4)
-        for col, text, width in (("id", "Patient ID", 80), ("type", "Category", 110),
-                                 ("waited", "Waiting (min)", 100)):
+        for col, text, width in (("id", "Patient ID", 75), ("type", "Acuity / Status", 135),
+                                 ("waited", "Waiting Time", 105)):
             self.wait_tree.heading(col, text=text)
             self.wait_tree.column(col, width=width, anchor=tk.CENTER)
         self.wait_tree.tag_configure("Emergency", background="#fff5f5", foreground="#dc2626")
+        self.wait_tree.tag_configure("Emergency_Alert", background="#fee2e2", foreground="#991b1b")
         self.wait_tree.tag_configure("General", background="#ffffff", foreground="#1e293b")
+        self.wait_tree.tag_configure("General_Long", background="#fffbeb", foreground="#b45309")
         self.wait_tree.pack(fill=tk.BOTH, expand=True)
 
         class_frame = ttk.LabelFrame(left, text=" Priority Class Summary ", padding=4)
@@ -272,12 +343,12 @@ class LiveView(ttk.Frame):
         self.kpis = {}
 
         cards_meta = [
-            ("arrivals", "ARRIVALS", "#2563eb"),
-            ("completed", "COMPLETED", "#059669"),
-            ("queue_length", "IN QUEUE", "#d97706"),
-            ("in_service", "BEING TREATED", "#0284c7"),
-            ("reneged", "LEFT UNTREATED", "#dc2626"),
-            ("average_wait", "AVG WAIT (MIN)", "#7c3aed"),
+            ("arrivals", "📥 ARRIVALS", "#2563eb"),
+            ("completed", "✓ COMPLETED", "#059669"),
+            ("queue_length", "⏳ IN QUEUE", "#d97706"),
+            ("in_service", "🩺 BEING TREATED", "#0284c7"),
+            ("reneged", "🚪 LEFT UNTREATED", "#dc2626"),
+            ("average_wait", "⏱ AVG WAIT (MIN)", "#7c3aed"),
         ]
 
         for col, (key, title, accent_color) in enumerate(cards_meta):
@@ -399,8 +470,8 @@ class LiveView(ttk.Frame):
 
         for col_idx, (text, width, bg, fg) in enumerate(headers):
             lbl = tk.Label(
-                table_container, text=text, font=("Segoe UI", 8, "bold"),
-                bg=bg, fg=fg, bd=1, relief=tk.SOLID, padx=6, pady=4
+                table_container, text=text, font=("Segoe UI", 7, "bold"),
+                bg=bg, fg=fg, bd=1, relief=tk.SOLID, padx=4, pady=2
             )
             lbl.grid(row=0, column=col_idx, sticky="nsew")
             table_container.columnconfigure(col_idx, weight=1)
@@ -423,30 +494,30 @@ class LiveView(ttk.Frame):
             bg_row = "#ffffff" if row_idx % 2 == 1 else "#f8fafc"
 
             m_lbl = tk.Label(
-                table_container, text=metric_title, font=("Segoe UI", 9, "bold"),
-                bg=bg_row, fg="#1e293b", anchor="w", padx=8, pady=4, bd=1, relief=tk.GROOVE
+                table_container, text=metric_title, font=("Segoe UI", 8),
+                bg=bg_row, fg="#1e293b", anchor="w", padx=6, pady=1, bd=1, relief=tk.GROOVE
             )
             m_lbl.grid(row=row_idx, column=0, sticky="nsew")
 
             e_lbl = tk.Label(
-                table_container, text="-", font=("Segoe UI", 10, "bold"),
-                bg=bg_row, fg="#1d4ed8", anchor="center", padx=6, pady=4, bd=1, relief=tk.GROOVE
+                table_container, text="-", font=("Segoe UI", 8, "bold"),
+                bg=bg_row, fg="#1d4ed8", anchor="center", padx=4, pady=1, bd=1, relief=tk.GROOVE
             )
             e_lbl.grid(row=row_idx, column=1, sticky="nsew")
 
             m_lbl_cell = tk.Label(
-                table_container, text="-", font=("Segoe UI", 10, "bold"),
-                bg=bg_row, fg="#b91c1c", anchor="center", padx=6, pady=4, bd=1, relief=tk.GROOVE
+                table_container, text="-", font=("Segoe UI", 8, "bold"),
+                bg=bg_row, fg="#b91c1c", anchor="center", padx=4, pady=1, bd=1, relief=tk.GROOVE
             )
             m_lbl_cell.grid(row=row_idx, column=2, sticky="nsew")
 
             v_lbl = tk.Label(
-                table_container, text="-", font=("Segoe UI", 8),
-                bg=bg_row, fg="#334155", anchor="center", padx=6, pady=4, bd=1, relief=tk.GROOVE
+                table_container, text="-", font=("Segoe UI", 7),
+                bg=bg_row, fg="#334155", anchor="center", padx=4, pady=1, bd=1, relief=tk.GROOVE
             )
             v_lbl.grid(row=row_idx, column=3, sticky="nsew")
 
-            table_container.rowconfigure(row_idx, weight=1)
+            table_container.rowconfigure(row_idx, weight=0, minsize=16)
 
             self.combined_matrix_labels[metric_key] = {
                 "elida": e_lbl,
@@ -617,7 +688,26 @@ class LiveView(ttk.Frame):
             self.nurse_canvas.itemconfigure(self.nurse_window_id, width=max(req_w, canvas_w))
 
     def _update_speed_label(self):
-        self.speed_label.config(text=f"{self.speed_var.get():.0f} sim-min/s")
+        val = self.speed_var.get()
+        self.speed_label.config(text=f"{val:.0f} min/s")
+        int_val = int(round(val))
+        for p_val, btn in getattr(self, "preset_btns", {}).items():
+            if p_val == int_val:
+                btn.config(bg="#2563eb", fg="#ffffff", relief=tk.SUNKEN)
+            else:
+                btn.config(bg="#f1f5f9", fg="#475569", relief=tk.SOLID)
+
+    def _set_status(self, state, text=None):
+        """Unified status badge updater with elevated modern healthcare aesthetic."""
+        configs = {
+            "ready": {"text": text or "● Ready", "bg": "#f1f5f9", "fg": "#475569"},
+            "running": {"text": text or "▶ Simulating (Lockstep)", "bg": "#dcfce7", "fg": "#166534"},
+            "paused": {"text": text or "⏸ Paused", "bg": "#fef3c7", "fg": "#92400e"},
+            "overtime": {"text": text or "⚠️ Overtime (Clearing)", "bg": "#fff7ed", "fg": "#c2410c"},
+            "complete": {"text": text or "✓ Day Complete", "bg": "#e0e7ff", "fg": "#3730a3"},
+        }
+        cfg = configs.get(state, {"text": text or state, "bg": "#f1f5f9", "fg": "#475569"})
+        self.status_label.config(**cfg)
 
     # ------------------------------------------------------------------
     # Branch & View Switching (Preserves 100% Simulation State)
@@ -709,6 +799,12 @@ class LiveView(ttk.Frame):
             cfg_elida = base_cfg
         elif self.params.clinic_var.get() == "Clinic Marciano":
             cfg_marciano = base_cfg
+        elif self.params.clinic_var.get() == "Custom / Default DYCI":
+            # Apply custom user overrides to the currently active branch
+            if self.active_branch == "Clinic Marciano":
+                cfg_marciano = base_cfg
+            else:
+                cfg_elida = base_cfg
 
         self.controllers = {
             "Clinic Elida": SimulationController(cfg_elida),
@@ -739,7 +835,8 @@ class LiveView(ttk.Frame):
         self.insight_label.config(text="Results appear when the day ends.")
 
         self._build_nurse_tiles()
-        self.status_label.config(text="Ready", bg="#e2e8f0", fg="#334155")
+        self._set_status("ready")
+        self.clock_label.config(text="🕒 08:00 AM")
         self.refresh(force_chart=True)
         return True
 
@@ -760,7 +857,7 @@ class LiveView(ttk.Frame):
         if self.running or not self._ensure_controllers():
             return
         self.running = True
-        self.status_label.config(text="Running (Both)...", bg="#dcfce7", fg="#166534")
+        self._set_status("running", "▶ Running (Both)...")
         self._tick()
 
     def pause(self):
@@ -769,7 +866,7 @@ class LiveView(ttk.Frame):
             self.after_cancel(self._after_id)
             self._after_id = None
         if self.controllers and not all(c.is_finished() for c in self.controllers.values()):
-            self.status_label.config(text="Paused", bg="#fef3c7", fg="#92400e")
+            self._set_status("paused")
 
     def step_once(self):
         self.pause()
@@ -817,7 +914,7 @@ class LiveView(ttk.Frame):
 
         if all_finished:
             self.running = False
-            self.status_label.config(text="Day complete (All branches)", bg="#e0e7ff", fg="#3730a3")
+            self._set_status("complete", "✓ Day Complete (Both)")
         else:
             self._after_id = self.after(TICK_MS, self._tick)
 
@@ -868,20 +965,18 @@ class LiveView(ttk.Frame):
 
         # Both clocks are locked; use either to reflect current time
         clock_str = self.controllers["Clinic Elida"].snapshot()["clock"]
-        self.clock_label.config(text=clock_str)
+        self.clock_label.config(text=f"🕒 {clock_str}")
 
         all_finished = all(c.is_finished() for c in self.controllers.values())
         any_overtime = any(c.snapshot()["overtime"] for c in self.controllers.values())
 
         if all_finished:
-            self.status_label.config(text="Day complete", bg="#e0e7ff", fg="#3730a3")
+            self._set_status("complete", "✓ Day Complete")
         elif self.running:
-            phase = "Overtime - clearing queue" if any_overtime else "Simulating Both Clinics..."
-            self.status_label.config(
-                text=phase,
-                bg="#fef3c7" if any_overtime else "#dcfce7",
-                fg="#92400e" if any_overtime else "#166534"
-            )
+            if any_overtime:
+                self._set_status("overtime", "⚠️ Overtime (Clearing)")
+            else:
+                self._set_status("running", "▶ Simulating Both Clinics...")
 
         if self.active_view == "Combined Overview":
             self.refresh_combined()
@@ -892,18 +987,39 @@ class LiveView(ttk.Frame):
         snap = self.controller.snapshot()
         cfg = self.controller.config
 
-        # 1. Update KPI cards
+        # 1. Update KPI cards with dynamic telemetry colors
         for key in ("arrivals", "completed", "queue_length", "in_service", "reneged"):
             self.kpis[key].config(text=str(snap[key]))
-        self.kpis["average_wait"].config(text=f"{snap['average_wait']:.2f} m")
+
+        self.kpis["queue_length"].config(fg="#d97706" if snap["queue_length"] > 0 else "#0f172a")
+        self.kpis["reneged"].config(fg="#dc2626" if snap["reneged"] > 0 else "#0f172a")
+        self.kpis["completed"].config(fg="#059669" if snap["completed"] > 0 else "#0f172a")
+
+        avg_w = snap["average_wait"]
+        self.kpis["average_wait"].config(text=f"{avg_w:.2f} m")
+        if avg_w > cfg.emergency_target * 2:
+            self.kpis["average_wait"].config(fg="#dc2626")
+        elif avg_w > 0:
+            self.kpis["average_wait"].config(fg="#7c3aed")
+        else:
+            self.kpis["average_wait"].config(fg="#0f172a")
 
         # 2. Update nurse tiles
         for (tile, name, status, util, top_row), n in zip(self.nurse_tiles, snap["nurses"]):
             if n["busy"]:
+                pid = n["patient_id"]
+                sp = self.clinic_canvas.sprites.get(pid)
+                at_desk = (sp is not None and sp.state == "IN_SERVICE")
                 is_emerg = n["patient_type"] == "Emergency"
-                bg_color = "#fff1f2" if is_emerg else "#f0f9ff"
-                status_color = "#dc2626" if is_emerg else "#2563eb"
-                status_text = f"● Treating #{n['patient_id']} ({n['patient_type']})"
+
+                if at_desk:
+                    bg_color = "#fff1f2" if is_emerg else "#f0f9ff"
+                    status_color = "#dc2626" if is_emerg else "#2563eb"
+                    status_text = f"● Treating #{pid} ({n['patient_type']})"
+                else:
+                    bg_color = "#fffbeb"
+                    status_color = "#b45309"
+                    status_text = f"● Calling #{pid} (Walking)"
             else:
                 bg_color = "#f0fff4"
                 status_color = "#059669"
@@ -914,14 +1030,38 @@ class LiveView(ttk.Frame):
             status.config(text=status_text, fg=status_color)
             util.config(text=f"Util: {n['utilization']:.1f}%  •  Served: {n['served']}")
 
-        # 3. Update waiting room queue
+        # 3. Update waiting room queue with triage telemetry tags
         self.wait_tree.delete(*self.wait_tree.get_children())
         ordered = sorted(snap["waiting"], key=lambda w: (
             cfg.policy != "fifo" and w["type"] != "Emergency", -w["waited"]))
         for w in ordered:
-            label = w["type"] + (" (resume)" if w["resumed"] else "")
-            self.wait_tree.insert("", tk.END, values=(f"#{w['id']}", label, f"{w['waited']:.1f}"),
-                                  tags=(w["type"],))
+            is_emerg = w["type"] == "Emergency"
+            waited = w["waited"]
+            exceeded_target = is_emerg and (waited > cfg.emergency_target)
+            long_general = (not is_emerg) and (waited > 30.0)
+
+            if exceeded_target:
+                tag = "Emergency_Alert"
+                type_label = "🚨 Emerg. [TARGET BREACH]"
+                wait_str = f"⚠️ {waited:.1f} m"
+            elif is_emerg:
+                tag = "Emergency"
+                type_label = "🚨 Emergency" + (" (resume)" if w["resumed"] else "")
+                wait_str = f"{waited:.1f} m"
+            elif long_general:
+                tag = "General_Long"
+                type_label = "👤 General [LONG WAIT]"
+                wait_str = f"⏳ {waited:.1f} m"
+            else:
+                tag = "General"
+                type_label = "👤 General" + (" (resume)" if w["resumed"] else "")
+                wait_str = f"{waited:.1f} m"
+
+            self.wait_tree.insert(
+                "", tk.END,
+                values=(f"#{w['id']}", type_label, wait_str),
+                tags=(tag,)
+            )
 
         # 4. Stream new event log lines for this active branch
         new_events = self.controller.event_log[self._ui_log_index:]
@@ -1015,12 +1155,22 @@ class LiveView(ttk.Frame):
         # Update nurse workstation cards
         for branch, snap in [("Clinic Elida", snap_e), ("Clinic Marciano", snap_m)]:
             tiles = self.combined_nurse_tiles[branch]
+            canvas = self.canvas_elida if "Elida" in branch else self.canvas_marciano
             for (tile, lbl_name, lbl_status, lbl_util), n in zip(tiles, snap["nurses"]):
                 if n["busy"]:
+                    pid = n["patient_id"]
+                    sp = canvas.sprites.get(pid) if canvas else None
+                    at_desk = (sp is not None and sp.state == "IN_SERVICE")
                     is_emerg = n["patient_type"] == "Emergency"
-                    bg_color = "#fff1f2" if is_emerg else "#f0f9ff"
-                    fg_status = "#dc2626" if is_emerg else "#2563eb"
-                    status_text = f"● #{n['patient_id']} ({n['patient_type'][:4]}.)"
+
+                    if at_desk:
+                        bg_color = "#fff1f2" if is_emerg else "#f0f9ff"
+                        fg_status = "#dc2626" if is_emerg else "#2563eb"
+                        status_text = f"● #{pid} ({n['patient_type'][:4]}.)"
+                    else:
+                        bg_color = "#fffbeb"
+                        fg_status = "#b45309"
+                        status_text = f"● Calling #{pid}..."
                 else:
                     bg_color = "#f0fff4"
                     fg_status = "#059669"
