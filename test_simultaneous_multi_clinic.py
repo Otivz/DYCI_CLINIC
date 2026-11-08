@@ -79,10 +79,17 @@ def run_tests():
     assert ctrl_e.env.now == time_before
     assert len(ctrl_e.patients) == patients_e_before
     assert len(ctrl_m.patients) == patients_m_before
+    # Check that dual side-by-side animation canvases exist and are configured
+    assert hasattr(live, "canvas_elida") and live.canvas_elida.branch_name == "Clinic Elida"
+    assert hasattr(live, "canvas_marciano") and live.canvas_marciano.branch_name == "Clinic Marciano"
+    assert live.canvas_elida.nurse_count == 2
+    assert live.canvas_marciano.nurse_count == 3
+    assert len(live.canvas_elida.chairs) == 14
+    assert len(live.canvas_marciano.chairs) == 20
     # Check that comparative matrix labels are populated
     for key in ("arrivals", "completed", "queue_length", "in_service", "emerg_wait", "gen_wait", "nurse_util"):
         assert key in live.combined_matrix_labels
-    print("✓ Switch to Combined Overview: side-by-side KPI matrix & dual nurse tiles active")
+    print("✓ Switch to Combined Overview: dual side-by-side animation canvases & comparative matrix active")
 
     # Switch back to Clinic Elida
     live.switch_view("Clinic Elida")
@@ -131,7 +138,9 @@ def run_tests():
     # Check sprite sync in canvas
     assert "Clinic Elida" in live.clinic_canvas.branch_sprites
     assert "Clinic Marciano" in live.clinic_canvas.branch_sprites
-    print("✓ 2D Canvas maintained independent sprite pools for Elida and Marciano")
+    assert hasattr(live.canvas_elida, "sprites")
+    assert hasattr(live.canvas_marciano, "sprites")
+    print("✓ 2D Canvas maintained independent sprite pools across single and dual-arena views")
 
     # Pause test
     live.pause()

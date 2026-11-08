@@ -332,7 +332,48 @@ class LiveView(ttk.Frame):
             font=("Segoe UI", 8, "italic"), fg="#64748b", bg="#ffffff"
         ).pack(anchor=tk.W, pady=(2, 0))
 
-        # 2. Main Panes (Left: KPI Matrix & Research Insights, Right: Dual Nurse Workstations & Queue Analysis)
+        # 2. Dual Side-by-Side Clinic Animation Arenas
+        arenas_group = ttk.LabelFrame(
+            self.combined_container,
+            text=" 🏥 Live Multi-Campus Patient Flow & Triage Animation (Side-by-Side) ",
+            padding=3
+        )
+        arenas_group.pack(fill=tk.X, pady=(0, 6))
+
+        arenas_box = tk.Frame(arenas_group, bg="#f8fafc")
+        arenas_box.pack(fill=tk.BOTH, expand=True)
+
+        # Left Arena: Clinic Elida (2 Nurses, 14 Chairs)
+        left_arena = tk.Frame(arenas_box, bg="#f8fafc", bd=1, relief=tk.SOLID,
+                              highlightbackground="#bfdbfe", highlightthickness=1)
+        left_arena.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 2))
+
+        self.canvas_elida = ClinicCanvas(left_arena, height=135)
+        self.canvas_elida.set_branch("Clinic Elida")
+        self.canvas_elida.set_nurse_count(2)
+        self.canvas_elida.pack(fill=tk.BOTH, expand=True)
+
+        # Distinct Campus Boundary Divider between Elida and Marciano
+        divider = tk.Frame(arenas_box, bg="#e2e8f0", width=20, bd=1, relief=tk.GROOVE)
+        divider.pack(side=tk.LEFT, fill=tk.Y, padx=3)
+        lbl_div = tk.Label(
+            divider,
+            text="•\n•\nS\nE\nP\nA\nR\nA\nT\nE\n \nC\nA\nM\nP\nU\nS\n•\n•",
+            font=("Segoe UI", 6, "bold"), fg="#64748b", bg="#e2e8f0", justify=tk.CENTER
+        )
+        lbl_div.pack(expand=True)
+
+        # Right Arena: Clinic Marciano (3 Nurses, 20 Chairs)
+        right_arena = tk.Frame(arenas_box, bg="#f8fafc", bd=1, relief=tk.SOLID,
+                               highlightbackground="#fecaca", highlightthickness=1)
+        right_arena.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(2, 0))
+
+        self.canvas_marciano = ClinicCanvas(right_arena, height=135)
+        self.canvas_marciano.set_branch("Clinic Marciano")
+        self.canvas_marciano.set_nurse_count(3)
+        self.canvas_marciano.pack(fill=tk.BOTH, expand=True)
+
+        # 3. Main Panes (Left: KPI Matrix & Research Insights, Right: Dual Nurse Workstations & Queue Analysis)
         body = ttk.PanedWindow(self.combined_container, orient=tk.HORIZONTAL)
         body.pack(fill=tk.BOTH, expand=True)
 
@@ -683,6 +724,15 @@ class LiveView(ttk.Frame):
         self.clinic_canvas.set_branch(self.active_branch)
         self.clinic_canvas.set_nurse_count(len(self.controller.nurses))
 
+        if hasattr(self, "canvas_elida") and self.canvas_elida:
+            self.canvas_elida.reset()
+            self.canvas_elida.set_branch("Clinic Elida")
+            self.canvas_elida.set_nurse_count(2)
+        if hasattr(self, "canvas_marciano") and self.canvas_marciano:
+            self.canvas_marciano.reset()
+            self.canvas_marciano.set_branch("Clinic Marciano")
+            self.canvas_marciano.set_nurse_count(3)
+
         self.log_text.delete("1.0", tk.END)
         for tree in (self.wait_tree, self.class_tree):
             tree.delete(*tree.get_children())
@@ -692,6 +742,14 @@ class LiveView(ttk.Frame):
         self.status_label.config(text="Ready", bg="#e2e8f0", fg="#334155")
         self.refresh(force_chart=True)
         return True
+
+    def _sync_canvases(self, branch_name, snap, events):
+        """Synchronize both single-branch canvas and side-by-side combined canvases."""
+        self.clinic_canvas.sync(snap, events, branch=branch_name)
+        if branch_name == "Clinic Elida" and hasattr(self, "canvas_elida") and self.canvas_elida:
+            self.canvas_elida.sync(snap, events, branch="Clinic Elida")
+        elif branch_name == "Clinic Marciano" and hasattr(self, "canvas_marciano") and self.canvas_marciano:
+            self.canvas_marciano.sync(snap, events, branch="Clinic Marciano")
 
     def _ensure_controllers(self):
         if not self.controllers or any(c.is_finished() for c in self.controllers.values()):
@@ -722,7 +780,7 @@ class LiveView(ttk.Frame):
             ctrl.step(STEP_BUTTON_MIN)
             snap = ctrl.snapshot()
             events = ctrl.event_log[self._canvas_log_indices[branch_name]:]
-            self.clinic_canvas.sync(snap, events, branch=branch_name)
+            self._sync_canvases(branch_name, snap, events)
             self._canvas_log_indices[branch_name] = len(ctrl.event_log)
 
         self.refresh(force_chart=True)
@@ -733,7 +791,7 @@ class LiveView(ttk.Frame):
         for branch_name, ctrl in self.controllers.items():
             ctrl.run()
             snap = ctrl.snapshot()
-            self.clinic_canvas.sync(snap, [], branch=branch_name)
+            self._sync_canvases(branch_name, snap, [])
             self._canvas_log_indices[branch_name] = len(ctrl.event_log)
 
         self.refresh(force_chart=True)
@@ -750,7 +808,7 @@ class LiveView(ttk.Frame):
             ctrl.step(minutes)
             snap = ctrl.snapshot()
             events = ctrl.event_log[self._canvas_log_indices[branch_name]:]
-            self.clinic_canvas.sync(snap, events, branch=branch_name)
+            self._sync_canvases(branch_name, snap, events)
             self._canvas_log_indices[branch_name] = len(ctrl.event_log)
 
         self._tick_count += 1
